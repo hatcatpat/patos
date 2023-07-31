@@ -2,6 +2,8 @@
 
 __purely for educational purposes, and by educational i mean my own enjoyment__
 
+![image](https://github.com/hatcatpat/patos/assets/39860407/789b3db1-4ddf-49c2-be6b-6cb7335ae2aa)
+
 ## status
 - [x] bootloader
 - [x] gdt & idt
