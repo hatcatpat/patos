@@ -1,0 +1,61 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_EXCMD	mixed	/number, pattern, mixed, or combineV2/
+!_TAG_OUTPUT_FILESEP	slash	/slash or backslash/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PATTERN_LENGTH_LIMIT	96	/0 for no limit/
+!_TAG_PROC_CWD	/home/pat/source/patos/	//
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	5.9.0	//
+E_DIVIDE_BY_ZERO	kernel.c	/^    E_DIVIDE_BY_ZERO,$/;"	e	enum:exceptions	file:
+E_NUM_EXCEPTIONS	kernel.c	/^    E_NUM_EXCEPTIONS$/;"	e	enum:exceptions	file:
+FONTH	kernel.c	/^#define FONTH /;"	d	file:
+FONTW	kernel.c	/^#define FONTW /;"	d	file:
+H	kernel.c	/^#define H /;"	d	file:
+I_KEYBOARD	kernel.c	/^    I_KEYBOARD$/;"	e	enum:irqs	file:
+I_TIMER	kernel.c	/^    I_TIMER,$/;"	e	enum:irqs	file:
+W	kernel.c	/^#define W /;"	d	file:
+beep	kernel.c	/^beep (uint_t freq)$/;"	f	typeref:typename:void
+beep_dur	kernel.c	/^uint8_t beep_dur = 0;$/;"	v	typeref:typename:uint8_t
+bounce	kernel.c	/^bounce (void)$/;"	f	typeref:typename:void
+buffer	kernel.c	/^uint8_t buffer[W * H];$/;"	v	typeref:typename:uint8_t[]
+clear	kernel.c	/^clear (char bg)$/;"	f	typeref:typename:void
+color	kernel.c	/^uint8_t color[2] = { 15, 0 }; \/* fg, bg *\/$/;"	v	typeref:typename:uint8_t[2]
+com1	kernel.c	/^com1 (uint8_t data)$/;"	f	typeref:typename:void
+copy	kernel.c	/^copy (void *dest, void *src, uint_t count)$/;"	f	typeref:typename:void
+cursor	kernel.c	/^int cursor[2] = { 0, 0 };     \/* x, y *\/$/;"	v	typeref:typename:int[2]
+cursornewline	kernel.c	/^cursornewline (void)$/;"	f	typeref:typename:void
+cursornext	kernel.c	/^cursornext (void)$/;"	f	typeref:typename:void
+cursortab	kernel.c	/^cursortab (void)$/;"	f	typeref:typename:void
+exception	kernel.c	/^exception (uint8_t e)$/;"	f	typeref:typename:void
+exceptions	kernel.c	/^enum exceptions$/;"	g	file:
+forever	kernel.c	/^forever (void)$/;"	f	typeref:typename:void
+halt	kernel.c	/^halt (void)$/;"	f	typeref:typename:void
+inb	kernel.c	/^inb (uint16_t port)$/;"	f	typeref:typename:uint8_t
+io_wait	kernel.c	/^io_wait (void)$/;"	f	typeref:typename:void
+irq	kernel.c	/^irq (uint8_t e)$/;"	f	typeref:typename:void
+irqs	kernel.c	/^enum irqs$/;"	g	file:
+kernel	kernel.c	/^kernel (void)$/;"	f	typeref:typename:void
+key_stack	kernel.c	/^char key_stack[0x10];$/;"	v	typeref:typename:char[0x10]
+keys	kernel.c	/^bool keys[0xff];$/;"	v	typeref:typename:bool[0xff]
+keysp	kernel.c	/^uint8_t keysp = 0;$/;"	v	typeref:typename:uint8_t
+mask_irq	kernel.c	/^mask_irq (uint8_t x, bool enable)$/;"	f	typeref:typename:void
+nosound	kernel.c	/^nosound (void)$/;"	f	typeref:typename:void
+outb	kernel.c	/^outb (uint16_t port, uint8_t data)$/;"	f	typeref:typename:void
+paint	kernel.c	/^paint (void)$/;"	f	typeref:typename:void
+putc	kernel.c	/^putc (char c)$/;"	f	typeref:typename:void
+putn	kernel.c	/^putn (uint_t n)$/;"	f	typeref:typename:void
+putnh	kernel.c	/^putnh (uint_t n)$/;"	f	typeref:typename:void
+putpixel	kernel.c	/^putpixel (int16_t x, int16_t y, uint8_t col)$/;"	f	typeref:typename:void
+putrect	kernel.c	/^putrect (int16_t x, int16_t y, uint16_t w, uint16_t h, uint8_t col)$/;"	f	typeref:typename:void
+puts	kernel.c	/^puts (char *str)$/;"	f	typeref:typename:void
+remap_irq	kernel.c	/^remap_irq (void)$/;"	f	typeref:typename:void
+set	kernel.c	/^set (void *dest, int value, uint_t count)$/;"	f	typeref:typename:void
+sleep	kernel.c	/^sleep (uint_t dur)$/;"	f	typeref:typename:void
+sound	kernel.c	/^sound ()$/;"	f	typeref:typename:void
+strlen	kernel.c	/^strlen (char *str)$/;"	f	typeref:typename:uint_t
+ticks	kernel.c	/^uint_t ticks = 0;$/;"	v	typeref:typename:uint_t
+timer	kernel.c	/^timer (uint8_t chan, uint32_t hz)$/;"	f	typeref:typename:void
+vga	kernel.c	/^char *vga = (char *)0xa0000;$/;"	v	typeref:typename:char *

@@ -1,34 +1,18 @@
-#include "font.h"
-
-typedef signed char int8_t;
-typedef unsigned char uint8_t;
-typedef signed short int16_t;
-typedef unsigned short uint16_t;
-typedef signed int int32_t;
-typedef unsigned int uint32_t;
-typedef signed long int int64_t;
-typedef unsigned long int uint64_t;
-typedef unsigned int uint_t;
-
-enum booleans
-{
-    false,
-    true
-};
-
-typedef unsigned char bool;
+#include "kernel.h"
 
 #define W 320
 #define H 200
 #define FONTW (W / 4)
 #define FONTH (H / 4)
 
+#define TIMER_HZ 1193180
+
 char *vga = (char *)0xa0000;
 uint8_t buffer[W * H];
 int cursor[2] = { 0, 0 };     /* x, y */
 uint8_t color[2] = { 15, 0 }; /* fg, bg */
+uint_t ticks = 0, beep_dur = 0;
 bool keys[0xff];
-uint_t ticks = 0;
 
 void
 halt (void)
@@ -44,13 +28,13 @@ forever (void)
 }
 
 void
-memcpy (void *dest, void *src, uint_t count)
+copy (void *dest, void *src, uint_t count)
 {
     __asm__ ("rep movsb" : "+c"(count), "+S"(src), "+D"(dest));
 }
 
 void
-memset (void *dest, int value, uint_t count)
+set (void *dest, int value, uint_t count)
 {
     __asm__ ("rep stosb" : "+c"(count), "+a"(value), "+D"(dest));
 }
@@ -58,13 +42,13 @@ memset (void *dest, int value, uint_t count)
 void
 paint (void)
 {
-    memcpy (vga, buffer, W * H);
+    copy (vga, buffer, W * H);
 }
 
 void
 clear (char bg)
 {
-    memset (buffer, bg, W * H);
+    set (buffer, bg, W * H);
     cursor[0] = cursor[1] = 0;
     color[1] = bg;
 }
@@ -72,7 +56,7 @@ clear (char bg)
 void
 putpixel (int16_t x, int16_t y, uint8_t col)
 {
-    if (y < H && x < W)
+    if (0 <= y && y < H && 0 <= x && x < W)
         buffer[y * W + x] = col;
 }
 
@@ -118,6 +102,8 @@ putc (char c)
             char *font = 0;
             if ('a' <= c && c <= 'z')
                 font = (char *)alpha[c - 'a'];
+            else if ('A' <= c && c <= 'Z')
+                font = (char *)alpha[c - 'A'];
             else if ('0' <= c && c <= '9')
                 font = (char *)digit[c - '0'];
 
@@ -222,7 +208,7 @@ sleep (uint_t dur)
     static uint_t end;
     end = ticks + dur;
     while (ticks < end)
-        halt (); /* TODO: test this */
+        halt ();
 }
 
 enum exceptions
@@ -244,8 +230,7 @@ exception (uint8_t e)
 enum irqs
 {
     I_TIMER,
-    I_KEYBOARD,
-    I_NUM_IRQS
+    I_KEYBOARD
 };
 
 void
@@ -255,12 +240,19 @@ irq (uint8_t e)
         {
         case I_TIMER:
             ticks++;
+            if (beep_dur != 0)
+                {
+                    beep_dur--;
+                    if (beep_dur == 0)
+                        nobeep ();
+                }
             break;
 
         case I_KEYBOARD:
             {
                 uint8_t scancode = inb (0x60);
-                keys[0] = scancode & 0x80 ? false : true;
+                uint8_t key = scancode & ~0x80;
+                keys[key] = !(scancode & 0x80);
             }
             break;
         }
@@ -306,35 +298,63 @@ remap_irq (void)
 
     outb (0x21, 0xff);
     outb (0xa1, 0xff);
-
-    mask_irq (I_TIMER, true);
-    mask_irq (I_KEYBOARD, true);
 }
 
 void
-init_timer (uint32_t hz)
+timer (uint8_t chan, uint32_t hz)
 {
-    uint32_t divisor = hz == 0 ? 0 : 1193182 / hz;
-    outb (0x43, 54); /* 00_11_011_0 = 54 */
-    outb (0x40, divisor & 0xff);
-    outb (0x40, (divisor >> 8) & 0xff);
-    ticks = 0;
+    uint32_t div = hz == 0 ? 0 : TIMER_HZ / hz;
+
+    switch (chan)
+        {
+        case 0:
+            outb (0x43, 0x36);
+            outb (0x40, div);
+            outb (0x40, div >> 8);
+            break;
+
+        case 2:
+            outb (0x43, 0xb6);
+            outb (0x42, div);
+            outb (0x42, div >> 8);
+            break;
+        }
 }
 
 void
-kernel (void)
+beep (uint_t freq, uint_t dur)
 {
-    clear (2);
-    paint ();
-    remap_irq ();
-    init_timer (100);
-    __asm__ ("sti");
+    timer (2, freq);
+    beep_dur = 10;
+}
 
+void
+nobeep ()
+{
+    timer (2, TIMER_HZ);
+}
+
+void
+sound ()
+{
+    nobeep ();
+    outb (0x61, inb (0x61) | 3);
+}
+
+void
+nosound (void)
+{
+    outb (0x61, inb (0x61) & 0xfc);
+}
+
+void
+bounce (void)
+{
+    static int x = FONTW / 2, y = FONTH / 2, dx = 0, dy = 0;
+    static char *hello = "hello";
     for (;;)
         {
-            static int x = 4, y = 17, dx = 0, dy = 0;
-            char *hello = "hello";
-            clear (keys[0] ? 8 : 4);
+            clear (keys[1] ? 8 : 4);
             cursor[0] = x, cursor[1] = y;
             puts (hello);
             cursor[0] = cursor[1] = 0;
@@ -342,9 +362,15 @@ kernel (void)
             paint ();
 
             if (dx == 0 && x == 0)
-                dx = 1;
+                {
+                    dx = 1;
+                    beep (440, 20);
+                }
             else if (dx == 1 && x == FONTW - strlen (hello) + 1)
-                dx = 0;
+                {
+                    dx = 0;
+                    beep (220, 20);
+                }
 
             if (dx == 0)
                 x--;
@@ -352,9 +378,15 @@ kernel (void)
                 x++;
 
             if (dy == 0 && y == 0)
-                dy = 1;
+                {
+                    dy = 1;
+                    beep (660, 20);
+                }
             else if (dy == 1 && y == FONTH - 1)
-                dy = 0;
+                {
+                    dy = 0;
+                    beep (770, 20);
+                }
 
             if (dy == 0)
                 y--;
@@ -363,6 +395,23 @@ kernel (void)
 
             sleep (1);
         }
+}
+
+void
+kernel (void)
+{
+    clear (2);
+    paint ();
+
+    remap_irq ();
+    mask_irq (I_TIMER, true);
+    mask_irq (I_KEYBOARD, true);
+    timer (0, 100);
+    sound ();
+
+    __asm__ ("sti");
+
+    bounce ();
 
     forever ();
 }
