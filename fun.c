@@ -155,8 +155,8 @@ froggame (void)
 
             clear (1);
             putrect (0, H - 10, W, 10, 2);
-            putbms (frog, 8, 8, x, y, 4, 4);
-            putbms (berry, 3, 3, bx, by, 4, 4);
+            putimgs (frog, 8, 8, x, y, 4, 4);
+            putimgs (berry, 3, 3, bx, by, 4, 4);
             cursor[0] = cursor[1] = 1, putn (score);
 
             paint ();
@@ -171,20 +171,56 @@ froggame (void)
 void
 mdraw (void)
 {
+    static uint8_t canvas[W * H];
+    uint8_t pointer[4 * 4] = {
+        0,  15, 15, 15, /**/
+        0,  0,  15, 15, /**/
+        0,  15, 0,  15, /**/
+        15, 15, 0,  0,  /**/
+    };
+    uint8_t sz = 4, col = COLOR_RED;
+
+    set (canvas, color[0], W * H);
     for (;;)
         {
             if (pressed (char2scancode ('r')) || mpressed (2))
                 {
+                    set (canvas, color[0], W * H);
                     mouse[0] = W / 2, mouse[1] = H / 2;
-                    clear (random () % 16);
                 }
 
+            if (pressed (char2scancode ('1')))
+                col = COLOR_RED;
+            else if (pressed (char2scancode ('2')))
+                col = COLOR_BLUE;
+            else if (pressed (char2scancode ('3')))
+                col = COLOR_GREEN;
+
+            if (held (char2scancode ('a')) && sz >= 2)
+                sz--;
+            else if (held (char2scancode ('d')))
+                sz++;
+
+            copy (buffer, canvas, W * H);
+
             cursor[0] = cursor[1] = 0;
-            putrect (0, 0, W, 4 * 2, color[0]);
+            putrect (0, 0, 4 * 16, 4 * 2, color[0]);
             putn (mouse[0]), putc ('\n'), putn (mouse[1]);
 
-            putrect (CLAMP (mouse[0], 0, W - 2), CLAMP (mouse[1], 0, H - 2), 2,
-                     2, mheld (0) ? random () % 16 : color[1]);
+            putimg (pointer, CLAMP (mouse[0], 0, W - 2),
+                    CLAMP (mouse[1], 0, H - 2), 4, 4);
+
+            putemptyrect (CLAMP (mouse[0] + 4, 0, W),
+                          CLAMP (mouse[1] - sz, 0, H), sz, sz, col);
+
+            if (mheld (0))
+                {
+                    int i, x, y;
+                    x = CLAMP (mouse[0] + 4, 0, W);
+                    y = CLAMP (mouse[1] - sz, 0, H);
+                    for (i = 0; i < sz * sz; ++i)
+                        canvas[x + i % sz + W * (y + i / sz)] = col;
+                }
 
             paint ();
 

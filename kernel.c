@@ -68,6 +68,16 @@ putrect (int16_t x, int16_t y, uint16_t w, uint16_t h, uint8_t col)
 }
 
 void
+putemptyrect (int16_t x, int16_t y, uint16_t w, uint16_t h, uint8_t col)
+{
+    uint_t i;
+    for (i = 0; i < w; ++i)
+        putpixel (x + i, y, col), putpixel (x + i, y + h - 1, col);
+    for (i = 0; i < h - 1; ++i)
+        putpixel (x, y + i + 1, col), putpixel (x + w - 1, y + i + 1, col);
+}
+
+void
 putellipse (int16_t cx, int16_t cy, uint16_t w, uint16_t h, uint8_t col)
 {
     int hh = SQR (h);
@@ -101,22 +111,22 @@ putellipse (int16_t cx, int16_t cy, uint16_t w, uint16_t h, uint8_t col)
 }
 
 void
-putbm (uint8_t *bm, int16_t x, int16_t y, uint8_t w, uint8_t h)
+putimg (uint8_t *img, int16_t x, int16_t y, uint8_t w, uint8_t h)
 {
     uint_t i;
     for (i = 0; i < w * h; i++)
-        if (bm[i] != 0)
-            putpixel (x + i % w, y + i / w, bm[i]);
+        if (img[i] != 0)
+            putpixel (x + i % w, y + i / w, img[i]);
 }
 
 void
-putbms (uint8_t *bm, uint_t sx, uint_t sy, int16_t x, int16_t y, uint8_t w,
-        uint8_t h)
+putimgs (uint8_t *img, uint_t sx, uint_t sy, int16_t x, int16_t y, uint8_t w,
+         uint8_t h)
 {
     uint_t i;
     for (i = 0; i < w * h; i++)
-        if (bm[i] != 0)
-            putrect (x + sx * (i % w), y + sy * (i / w), sx, sy, bm[i]);
+        if (img[i] != 0)
+            putrect (x + sx * (i % w), y + sy * (i / w), sx, sy, img[i]);
 }
 
 void

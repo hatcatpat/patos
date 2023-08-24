@@ -14,7 +14,7 @@ entry.o: entry.asm
 	nasm -f elf entry.asm -o entry.o
 
 cflags=-O0 -g -ffreestanding -fno-builtin -nostdlib -nostdinc -Wall -ansi -masm=intel -m32
-kernel.o: kernel.c *.h
+kernel.o: *.c *.h
 	$(cc) $(cflags) -c kernel.c -o kernel.o
 
 kernel.bin: kernel.o entry.o linker.ld

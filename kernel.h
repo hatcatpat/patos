@@ -11,7 +11,11 @@
 #define FONTW (W / 4)
 #define FONTH (H / 4)
 
-#define asm __asm__
+#define COLOR_BLACK 0
+#define COLOR_WHITE 0xf
+#define COLOR_RED 0x28
+#define COLOR_GREEN 0x2f
+#define COLOR_BLUE 0x20
 
 extern char *vga;
 extern uint8_t buffer[W * H];
@@ -55,10 +59,11 @@ void putnh (uint_t n);
 void puts (char *str);
 void putpixel (int16_t x, int16_t y, uint8_t col);
 void putrect (int16_t x, int16_t y, uint16_t w, uint16_t h, uint8_t col);
+void putemptyrect (int16_t x, int16_t y, uint16_t w, uint16_t h, uint8_t col);
 void putellipse (int16_t cx, int16_t cy, uint16_t w, uint16_t h, uint8_t col);
-void putbms (uint8_t *bm, uint_t sx, uint_t sy, int16_t x, int16_t y,
-             uint8_t w, uint8_t h);
-void putbm (uint8_t *bm, int16_t x, int16_t y, uint8_t w, uint8_t h);
+void putimgs (uint8_t *img, uint_t sx, uint_t sy, int16_t x, int16_t y,
+              uint8_t w, uint8_t h);
+void putimg (uint8_t *img, int16_t x, int16_t y, uint8_t w, uint8_t h);
 /**/
 
 /* interrupts */
