@@ -1,4 +1,6 @@
-char alpha['z' - 'a' + 1][4 * 4] = {
+unsigned char font_scale = 1;
+
+unsigned char alpha['z' - 'a' + 1][4 * 4] = {
     /* a */
     {
         0, 1, 1, 0, /**/
@@ -208,7 +210,7 @@ char alpha['z' - 'a' + 1][4 * 4] = {
     }
 };
 
-char digit[10][4 * 4] = {
+unsigned char digit[10][4 * 4] = {
     /* 0 */
     {
         0, 1, 0, 0, /**/

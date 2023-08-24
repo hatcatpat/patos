@@ -29,8 +29,8 @@ clean:
 qemuflags=-no-reboot \
 		  -serial file:serial.log \
 		  -drive file=os.img,format=raw,index=0,media=disk \
-		  -m 1M \
 		  -audiodev alsa,id=speaker -machine pcspk-audiodev=speaker
+		  # -audiodev jack,id=speaker,out.connect-ports=playback_* -machine pcspk-audiodev=speaker
 run: all
 	qemu-system-i386 $(qemuflags)
 

@@ -1,23 +1,22 @@
 #include "kernel.h"
 
-#define W 320
-#define H 200
-#define FONTW (W / 4)
-#define FONTH (H / 4)
+#include "fun.c"
 
 #define TIMER_HZ 1193180
 
 char *vga = (char *)0xa0000;
 uint8_t buffer[W * H];
-int cursor[2] = { 0, 0 };     /* x, y */
-uint8_t color[2] = { 15, 0 }; /* fg, bg */
+int cursor[2] = { 0, 0 };        /* x, y */
+uint8_t color[2] = { 0, 15 };    /* bg, fg */
+bool keys[2][0xff];              /* [0][...] = recent, [1][...] = old */
+bool buttons[2][3];              /* [0][...] = recent, [1][...] = old */
+int mouse[2] = { W / 2, H / 2 }; /* x, y */
 uint_t ticks = 0, beep_dur = 0;
-bool keys[0xff];
 
 void
 halt (void)
 {
-    __asm__ ("hlt");
+    asm ("hlt");
 }
 
 void
@@ -30,13 +29,13 @@ forever (void)
 void
 copy (void *dest, void *src, uint_t count)
 {
-    __asm__ ("rep movsb" : "+c"(count), "+S"(src), "+D"(dest));
+    asm ("rep movsb" : "+c"(count), "+S"(src), "+D"(dest));
 }
 
 void
 set (void *dest, int value, uint_t count)
 {
-    __asm__ ("rep stosb" : "+c"(count), "+a"(value), "+D"(dest));
+    asm ("rep stosb" : "+c"(count), "+a"(value), "+D"(dest));
 }
 
 void
@@ -46,11 +45,11 @@ paint (void)
 }
 
 void
-clear (char bg)
+clear (uint8_t bg)
 {
     set (buffer, bg, W * H);
     cursor[0] = cursor[1] = 0;
-    color[1] = bg;
+    color[0] = bg;
 }
 
 void
@@ -63,10 +62,61 @@ putpixel (int16_t x, int16_t y, uint8_t col)
 void
 putrect (int16_t x, int16_t y, uint16_t w, uint16_t h, uint8_t col)
 {
-    static uint16_t i, j;
-    for (i = 0; i < w; ++i)
-        for (j = 0; j < h; ++j)
-            putpixel (x + i, y + j, col);
+    uint_t i;
+    for (i = 0; i < w * h; ++i)
+        putpixel (x + i % w, y + i / w, col);
+}
+
+void
+putellipse (int16_t cx, int16_t cy, uint16_t w, uint16_t h, uint8_t col)
+{
+    int hh = SQR (h);
+    int ww = SQR (w);
+    int hhww = hh * ww;
+    int x0 = w;
+    int dx = 0;
+    int x, y, x1;
+
+    for (x = -w; x <= w; x++)
+        putpixel (cx + x, cy, col);
+
+    for (y = 1; y <= h; y++)
+        {
+            x1 = x0 - (dx - 1);
+            while (x1 > 0)
+                {
+                    if (SQR (x1) * hh + SQR (y) * ww <= hhww)
+                        break;
+                    x1--;
+                }
+            dx = x0 - x1;
+            x0 = x1;
+
+            for (x = -x0; x <= x0; x++)
+                {
+                    putpixel (cx + x, cy - y, col);
+                    putpixel (cx + x, cy + y, col);
+                }
+        }
+}
+
+void
+putbm (uint8_t *bm, int16_t x, int16_t y, uint8_t w, uint8_t h)
+{
+    uint_t i;
+    for (i = 0; i < w * h; i++)
+        if (bm[i] != 0)
+            putpixel (x + i % w, y + i / w, bm[i]);
+}
+
+void
+putbms (uint8_t *bm, uint_t sx, uint_t sy, int16_t x, int16_t y, uint8_t w,
+        uint8_t h)
+{
+    uint_t i;
+    for (i = 0; i < w * h; i++)
+        if (bm[i] != 0)
+            putrect (x + sx * (i % w), y + sy * (i / w), sx, sy, bm[i]);
 }
 
 void
@@ -108,16 +158,18 @@ putc (char c)
                 font = (char *)digit[c - '0'];
 
             if (font == 0)
-                putrect (cursor[0] * 4, cursor[1] * 4, 4, 4, color[1]);
+                putrect (cursor[0] * 4 * font_scale,
+                         cursor[1] * 4 * font_scale, 4, 4, color[0]);
             else
                 {
-                    int i, j;
-                    char x;
-                    for (i = 0; i < 4; i++)
-                        for (j = 0; j < 4; j++)
-                            if ((x = font[i + j * 4]) != 0)
-                                putpixel (cursor[0] * 4 + i, cursor[1] * 4 + j,
-                                          color[0] * x);
+                    uint8_t i;
+                    for (i = 0; i < 4 * 4; ++i)
+                        if (font[i] != 0)
+                            putrect (cursor[0] * 4 * font_scale
+                                         + font_scale * (i % 4),
+                                     cursor[1] * 4 * font_scale
+                                         + font_scale * (i / 4),
+                                     font_scale, font_scale, color[1]);
                 }
 
             cursornext ();
@@ -132,7 +184,7 @@ puts (char *str)
 }
 
 uint_t
-strlen (char *str)
+slen (char *str)
 {
     uint_t i = 0;
     while (str[i++] != 0)
@@ -143,7 +195,7 @@ strlen (char *str)
 void
 putn (uint_t n)
 {
-    static char arr[10];
+    char arr[10];
     uint_t i = 0;
     do
         {
@@ -158,7 +210,7 @@ putn (uint_t n)
 void
 putnh (uint_t n)
 {
-    static char arr[8];
+    char arr[8];
     uint_t i = 0;
     do
         {
@@ -179,15 +231,21 @@ putnh (uint_t n)
 uint8_t
 inb (uint16_t port)
 {
-    static uint8_t result;
-    __asm__ ("in al, dx" : "=a"(result) : "d"(port));
+    uint8_t result;
+    asm ("in al, dx" : "=a"(result) : "d"(port));
     return result;
 }
 
 void
 outb (uint16_t port, uint8_t data)
 {
-    __asm__ ("out dx, al" : : "d"(port), "a"(data));
+    asm ("out dx, al" : : "d"(port), "a"(data));
+}
+
+void
+outw (uint16_t port, uint16_t data)
+{
+    asm ("out dx, al" : : "d"(port), "a"(data));
 }
 
 void
@@ -205,8 +263,7 @@ io_wait (void)
 void
 sleep (uint_t dur)
 {
-    static uint_t end;
-    end = ticks + dur;
+    uint_t end = ticks + dur;
     while (ticks < end)
         halt ();
 }
@@ -230,7 +287,8 @@ exception (uint8_t e)
 enum irqs
 {
     I_TIMER,
-    I_KEYBOARD
+    I_KEYBOARD,
+    I_MOUSE = 12
 };
 
 void
@@ -252,7 +310,41 @@ irq (uint8_t e)
             {
                 uint8_t scancode = inb (0x60);
                 uint8_t key = scancode & ~0x80;
-                keys[key] = !(scancode & 0x80);
+                keys[0][key] = !(scancode & 0x80);
+            }
+            break;
+
+        case I_MOUSE:
+            {
+                static uint8_t packet[3] = { 0 };
+                static uint8_t count = 0;
+
+                if ((inb (0x64) & 1) != 0)
+                    {
+                        switch (count)
+                            {
+                            case 0:
+                                packet[count++] = inb (0x60);
+                                break;
+                            case 1:
+                                packet[count++] = inb (0x60);
+                                break;
+                            case 2:
+                                packet[count++] = inb (0x60);
+                                count = 0;
+
+                                buttons[0][0] = packet[0] & 1;
+                                buttons[0][1] = packet[0] & 2;
+                                buttons[0][2] = packet[0] & 4;
+
+                                /* maths magic from osdev wiki */
+                                mouse[0]
+                                    += packet[1] - (packet[0] << 4 & 0x100);
+                                mouse[1]
+                                    += (packet[0] << 3 & 0x100) - packet[2];
+                                break;
+                            }
+                    }
             }
             break;
         }
@@ -263,7 +355,7 @@ irq (uint8_t e)
 }
 
 void
-mask_irq (uint8_t x, bool enable)
+toggle_irq (uint8_t x, bool enable)
 {
     uint16_t port;
     uint8_t value;
@@ -296,7 +388,7 @@ remap_irq (void)
     outb (0x21, 1);
     outb (0xa1, 1);
 
-    outb (0x21, 0xff);
+    outb (0x21, 0xff & ~(1 << 2));
     outb (0xa1, 0xff);
 }
 
@@ -325,17 +417,17 @@ void
 beep (uint_t freq, uint_t dur)
 {
     timer (2, freq);
-    beep_dur = 10;
+    beep_dur = dur;
 }
 
 void
-nobeep ()
+nobeep (void)
 {
     timer (2, TIMER_HZ);
 }
 
 void
-sound ()
+sound (void)
 {
     nobeep ();
     outb (0x61, inb (0x61) | 3);
@@ -347,71 +439,100 @@ nosound (void)
     outb (0x61, inb (0x61) & 0xfc);
 }
 
-void
-bounce (void)
+bool
+pressed (uint8_t key)
 {
-    static int x = FONTW / 2, y = FONTH / 2, dx = 0, dy = 0;
-    static char *hello = "hello";
-    for (;;)
+    return !keys[1][key] && keys[0][key];
+}
+
+bool
+held (uint8_t key)
+{
+    return keys[0][key];
+}
+
+bool
+mheld (uint8_t button)
+{
+    return buttons[0][button];
+}
+
+bool
+mpressed (uint8_t button)
+{
+    return !buttons[1][button] && buttons[0][button];
+}
+
+void
+mouse_wait (bool signal)
+{
+    uint_t timeout = 100000;
+    if (signal)
         {
-            clear (keys[1] ? 8 : 4);
-            cursor[0] = x, cursor[1] = y;
-            puts (hello);
-            cursor[0] = cursor[1] = 0;
-            putn (ticks);
-            paint ();
-
-            if (dx == 0 && x == 0)
-                {
-                    dx = 1;
-                    beep (440, 20);
-                }
-            else if (dx == 1 && x == FONTW - strlen (hello) + 1)
-                {
-                    dx = 0;
-                    beep (220, 20);
-                }
-
-            if (dx == 0)
-                x--;
-            else if (dx == 1)
-                x++;
-
-            if (dy == 0 && y == 0)
-                {
-                    dy = 1;
-                    beep (660, 20);
-                }
-            else if (dy == 1 && y == FONTH - 1)
-                {
-                    dy = 0;
-                    beep (770, 20);
-                }
-
-            if (dy == 0)
-                y--;
-            else if (dy == 1)
-                y++;
-
-            sleep (1);
+            while (timeout--)
+                if ((inb (0x64) & 2) == 0)
+                    return;
+            return;
         }
+    else
+        {
+            while (timeout--)
+                if ((inb (0x64) & 1) == 1)
+                    return;
+            return;
+        }
+}
+
+uint8_t
+mouse_read (void)
+{
+    mouse_wait (0);
+    return inb (0x60);
+}
+
+uint8_t
+mouse_write (uint8_t x)
+{
+    outb (0x64, 0xd4);
+    mouse_wait (1);
+    outb (0x60, x);
+    return mouse_read ();
+}
+
+void
+setup_mouse (void)
+{
+    uint8_t ccb;
+
+    outb (0x64, 0xa8);
+
+    outb (0x64, 0x20);
+    ccb = inb (0x60) | 2;
+
+    outb (0x64, 0x60);
+    outb (0x60, ccb);
+
+    mouse_write (0xf6);
+    mouse_write (0xf4);
 }
 
 void
 kernel (void)
 {
-    clear (2);
+    clear (0);
     paint ();
 
     remap_irq ();
-    mask_irq (I_TIMER, true);
-    mask_irq (I_KEYBOARD, true);
-    timer (0, 100);
-    sound ();
+    toggle_irq (I_TIMER, true);
+    toggle_irq (I_KEYBOARD, true);
+    toggle_irq (I_MOUSE, true);
+    timer (0, 60);
 
-    __asm__ ("sti");
+    setup_mouse ();
 
-    bounce ();
+    asm ("sti");
+
+    mdraw ();
 
     forever ();
 }

@@ -15,7 +15,7 @@ boot:
 	mov dh, 0 ; head number
 	int 0x13
 
-	mov ax, 0x0013
+	mov ax, 0x13
 	int 0x10 ; set vga mode
 
 	mov ax, 0x2401

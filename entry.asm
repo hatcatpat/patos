@@ -28,8 +28,6 @@ idt_start:
 	%assign i i + 1
 	%endrep
 
-	; IDT_ENTRY irq_timer
-
 	%assign i 0
 	%rep 16
 		IDT_ENTRY irq%+ i
@@ -68,16 +66,6 @@ irq%+ %1:
 	IRQ i
 %assign i i + 1
 %endrep
-
-extern ticks
-irq_timer:
-	pusha
-	add word [ticks], 1
-	mov ax, 0x20
-	mov dx, ax
-    out dx, ax
-	popa
-	iret
 
 section .bss
 resb 0x1000
